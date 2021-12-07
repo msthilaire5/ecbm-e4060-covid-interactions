@@ -1,0 +1,238 @@
+---
+title: "Report"
+output:
+  pdf_document: 
+    fig_height: 6
+    fig_width: 8
+    toc: yes
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+\newpage
+
+# Background
+COVID-19 is a single-stranded positive RNA (+ss-RNA) virus from the betacoronavirus family, which also includes MERS-CoV, and SARS-CoV. Coronaviruses possess the largest genome (30 kb) of the RNA viruses, contributing to their complex genome regulation strategies. Once COVID-19 infects a human host cell, it makes use of the proteins and host machinery including human RNA binding proteins (RBPs) that bind to RNA for processing such as post transcriptional modifications, regulation of stability and degradation (Tay et al. 2020). Several human RBPs have been previously shown to directly interact with coronaviruses to regulate their transcription, replication and translation. The full range of RBPs that may interact with COVID-19 remain to be described. In order to make strides towards the development of therapeutic strategies for COVID-19 and to understand the pathology of the virus, it is important to study the interactions between the viral genome and RBPs. If an RBP is involved in COVID-19 replication, targeting it for inhibition may reduce the rate at which the virus reproduces and may yield better clinical results in patients. Previously, as part of BioHackathon 2020, Ferraini et al. (2020) identified a set of proteins predicted to bind to the SARS-CoV-2 genome in order to characterize host-virus interactions post-infection and suggest pharmaceutical interventions for COVID-19 patients. Their workflow used position-weight matrices to locate potential binding sites for human RBPs on the genomes of SARS-CoV-2, SARS-CoV-1, and RaTG13, as well as simulated genomes that shared the nucleotide compositions of the aforementioned viruses. The difference in number of binding sites for each RBP between real and simulated genomes was tested for statistical significance to identify enriched RBP binding sites, and these binding sites were compared between viruses. This analysis identified 38 human RBPs that bind with SARS-CoV-2’s genome, a handful of which do so exclusively. 
+
+
+# Introduction
+To build upon the work by Ferraini et al., we will first reproduce the pipeline presented in the hackathon to obtain baseline results. This includes differential expression analysis to identify human mRNAs that are significantly up or down-regulated in COVID-19 infected cells. Since the release of the original hackathon results, new publications have revealed datasets that may be useful for modeling COVID-19 and human RBP interactions. For example, a study from December 2020 (Schmidt et al. 2020) published a list of 104 human RBPs they found to be experimentally interacting with COVID-19. Similarly, another study from 2021 mapped COVID-19 RBP interactions (Kamel et al. 2021). Thus, we plan on building upon previous methods by integrating known interactions for training a classifier that could identify COVID-19 interacting RBPs. Further, once we obtain a high confidence candidate list of RBPs, we can further evaluate their druggability to suggest human RBPs for further study (Gordon et al. 2020). We will divide the list of published COVID-19 interacting RBPs into training and testing sets to train a classifier using viral sequence information and differential expression results for RBP mRNAs. This model is likely to yield additional interacting candidates that have not yet been described
+\newpage
+
+# Analyse 
+### Project composition and functions 
+
+They first created a file (rbp_functions) with all the functions they needed:
+- to read the different type of file (readGFF, readFasta, readPWMsFromFasta), 
+- to calculate PWM information content (GetPWMEntropy)
+- to scan sequence(s) with multiple PWMs (ScanSeqWithPWMs)
+- to simulate a DNA sequence (simulateSeq)
+- to do enrichment test for RBP (enrich_rbps_real)
+
+Then they created 7 seven files to analyse and to find binding sites enriched in the SARS-CoV-2 genome: 
+- filter_ATtRACT
+- find_binding_sites
+- annotate_sites
+- simulate_genomes
+- find_sim_binding_sites
+- enrichment_analysis
+- filter_hits
+
+### 1) RNA-binding proteins (filter_ATtRACT)
+
+We start by filtering the RNA-binding proteins (RBP) coming from the daTabase of RNA binding proteins and AssoCiated moTifs (ATtRACT). Before filtration, there were 327 RBPs. We keep only human RBP (159 RBP) and we remove the ones consisting of only a single motif (106 RBP).
+
+Then we filter the position weight matrices (PWM) which are used to represente motifs (patterns) in biological sequences by matching then with RBPs and by removing high entropy PWM. We reduced the number of PWMs from 1583 to 230 and the number of RBPs in the search from 106 to 102. 
+
+We can visualize the plot of the density vs the entropy. 
+
+```{r, echo=FALSE, message=FALSE, results="hide"}
+source("human-RBP-analysis/01_filter_ATtRACT.R")
+```
+
+### 2) Genome
+We upload the SARS2 genome and we scan the genome with the PWMs. 
+After the selection of unique RBP-PWM mappings and finding duplicate binding sites for the same protein and choose the one with the highest score, we reduced number of sites from 30597 to 29290. 
+
+### 3) Annotated sites
+We load the gff file. We can visualize the head of the file.  
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img1_path <- "images/gff_head.png"
+img1 <- readPNG(img1_path, native = TRUE, info = TRUE)
+grid::grid.raster(img1)
+```
+
+*In bioinformatics, the general feature format (gene-finding format, generic feature format, GFF) is a file format used for describing genes and other features of DNA, RNA and protein sequences.*
+
+We can also visualize the head of the sites file. 
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img2_path <- "images/sites_head.png"
+img2 <- readPNG(img2_path, native = TRUE, info = TRUE)
+grid::grid.raster(img2)
+```
+
+The new file (*annoted_sites*) is more complete. 
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img3_path <- "images/annotated_sites_head.png"
+img3 <- readPNG(img3_path, native = TRUE, info = TRUE)
+grid::grid.raster(img3)
+```
+
+### 4) Simulated genomes 
+
+To simulate the genome, we used the reference genome with the number of occurrence of each nucleotide. 
+They did 5000 simulations which made our computers crash. So we decided to compare the results with 50, 500 and 5000 simulations to see if it was necessary to have this number of simulation. 
+
+We also simulated untranslated regions (or UTR):  5' side (sim_f_utrs)  and 3' side (sim_t_utrs).  
+
+We have 3 outputs for this file: sim_t_utrs.RData, sim_f_utrs.RData and sim_genomes.RData. 
+
+```{r, echo=FALSE, message=FALSE, results="hide"}
+source("human-RBP-analysis/04_simulate_genomes.R")
+```
+```{r,echo=FALSE, message=FALSE}
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/sim_genomes.RData")
+head(data.frame(sim_genomes))
+```
+
+
+
+### 5) Find the binding sites of the simulated genomes
+
+We load all the data we have: the genomes, the binding sites, the matrices and the proteins. 
+We start by listing all PWMs for RBPs that were found in the reference genome and then we look at the simulated genomes with these PWMs. 
+For 50 simulations, we obtain 1520059 binding sites from simulated genomes. 
+
+
+
+
+### 6) Enrichment analysis 
+
+We match binding sites with protein name
+Find duplicate binding sites for the same protein and choose the one with the highest score
+*Enrichment*: is a method to identify classes of genes or proteins that are over-represented in a large set of genes or proteins, and may have an association with disease phenotypes. The method uses statistical approaches to identify significantly enriched or depleted groups of genes. 
+
+For 50 simulations, we have 195 rows in the *site_count* file but each gene is represented two times (*why?*) so we have 98 genes. 
+
+### 7) Filter hits
+
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img6_path <- "images/sites_counts_paper.png"
+img6 <- readPNG(img6_path, native = TRUE, info = TRUE)
+grid::grid.raster(img6)
+```
+
+In the paper, they found 19 proteins whose binding sites are enriched in the SARS-CoV-2 genome. 
+
+
+Filter significant hits by keeping genes with qval<0.01, strand=="+" and N>2. 
+
+#### a) **50 simulations** 
+
+
+
+```{r, echo=FALSE, message=FALSE}
+library(kableExtra)
+library(knitr)
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/genome_hits.RData")
+knitr::kable(genome_hits, caption="genome_hits") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/f_utr_hits.RData")
+knitr::kable(f_utr_hits, caption="5’ UTR sequences") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/t_utr_hits.RData")
+knitr::kable(t_utr_hits, caption="3’ UTR sequences") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/genome_neg_hits.RData")
+knitr::kable(genome_neg_hits, caption="Genome negative hits") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+```
+
+**Genome hits**
+
+For 50 simulations, we find 20 genes. 
+With only 50 simulations, we can observe some differences between the paper and our results. 
+PABPC3 gene appears in the paper but not in our results and NOVA2 and ENOX1 genes appear in our results but not in the paper. However, the genes with very small p-value are in both tables. 
+
+**Negative genome hits**
+
+
+**5’ and 3’ UTR sequences**
+
+
+
+
+
+
+
+
+
+```{r, echo=FALSE, message=FALSE}
+
+par(mfrow = c(1,2),mar=c(5, 4, 1, 1)) 
+library("RColorBrewer")
+colors1 <- brewer.pal(n = 11, name = "Set3")
+colors2 <- brewer.pal(n = 9, name = "Set2")
+colors<-c(colors1, colors2)
+
+barplot(genome_hits$pval, main = "Pvalue for genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_hits$Gene_name)
+
+barplot(genome_hits$N, main = "Number of sites for genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_hits$Gene_name)
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+par(mfrow = c(1,2),mar=c(4.5, 4, 1, 1)) 
+barplot(genome_neg_hits$pval, main = "Number of sites for negative genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_neg_hits$Gene_name)
+
+barplot(genome_neg_hits$N, main = "Number of sites for negative genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_neg_hits$Gene_name)
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+par(mfrow = c(1,2),mar=c(6, 4, 1, 1)) 
+barplot(t_utr_hits$pval, main = "Number of sites for 3' sequences",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=t_utr_hits$Gene_name)
+
+barplot(t_utr_hits$N, main = "Number of sites for 3' sequences",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=t_utr_hits$Gene_name)
+
+```
+
+
+
+
+
+#### b) **500 simulations**
+
+
+
+
+\smallbreak
+
+# Results 
+\newpage
+
+# Conclusions 
+
+# References
+
+
