@@ -1,0 +1,252 @@
+---
+title: "Hackathon Analysis"
+output:
+  pdf_document: 
+    fig_height: 6
+    fig_width: 8
+    toc: yes
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analyse 
+### Project composition and functions 
+
+### 1) RNA-binding proteins (filter_ATtRACT)
+
+```{r, echo=FALSE, message=FALSE, results="hide"}
+#Visualize the entropy
+source("human-RBP-analysis/01_filter_ATtRACT.R")
+```
+
+### 2) Genome
+
+### 3) Annotated sites
+We load the gff file. We can visualize the head of the file.  
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img1_path <- "images/gff_head.png"
+img1 <- readPNG(img1_path, native = TRUE, info = TRUE)
+grid::grid.raster(img1)
+```
+
+We can also visualize the head of the sites file. 
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img2_path <- "images/sites_head.png"
+img2 <- readPNG(img2_path, native = TRUE, info = TRUE)
+grid::grid.raster(img2)
+```
+
+The new file (*annoted_sites*) is more complete. 
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img3_path <- "images/annotated_sites_head.png"
+img3 <- readPNG(img3_path, native = TRUE, info = TRUE)
+grid::grid.raster(img3)
+```
+
+### 4) Simulated genomes 
+
+```{r, echo=FALSE, message=FALSE, results="hide"}
+source("human-RBP-analysis/04_simulate_genomes.R")
+```
+
+```{r,echo=FALSE, message=FALSE}
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/sim_genomes.RData")
+head(data.frame(sim_genomes))
+```
+
+### 5) Find the binding sites of the simulated genomes
+
+### 6) Enrichment analysis 
+
+### 7) Filter hits
+
+```{r, echo = FALSE, out.width = "100%",fig.align = "center"}
+library(png)
+img6_path <- "images/sites_counts_paper.png"
+img6 <- readPNG(img6_path, native = TRUE, info = TRUE)
+grid::grid.raster(img6)
+```
+
+#### a) **50 simulations** 
+
+```{r, echo=FALSE, message=FALSE}
+library(kableExtra)
+library(knitr)
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/genome_hits.RData")
+knitr::kable(genome_hits, caption="genome_hits") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/f_utr_hits.RData")
+knitr::kable(f_utr_hits, caption="5’ UTR sequences") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/t_utr_hits.RData")
+knitr::kable(t_utr_hits, caption="3’ UTR sequences") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output50/genome_neg_hits.RData")
+knitr::kable(genome_neg_hits, caption="Genome negative hits") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+```
+
+```{r}
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output5000/genome_hits.RData")
+genome_hits<-genome_hits[,c(-2,-4,-5,-6,-8)]
+knitr::kable(genome_hits, caption="genome_hits") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+```
+
+
+```{r}
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output5000/f_utr_hits.RData")
+f_utr_hits<-f_utr_hits[,c(-2,-4,-5,-6,-8)]
+knitr::kable(f_utr_hits, caption="5’ UTR sequences") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output5000/t_utr_hits.RData")
+t_utr_hits<-t_utr_hits[,c(-2,-4,-5,-6,-8)]
+knitr::kable(t_utr_hits, caption="3’ UTR sequences") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+load("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/output5000/genome_neg_hits.RData")
+genome_neg_hits<-genome_neg_hits[,c(-2,-4,-5,-6,-8)]
+knitr::kable(genome_neg_hits, caption="Genome negative hits") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 10 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+```
+
+
+**Genome hits**
+
+**Negative genome hits**
+
+**5’ and 3’ UTR sequences**
+
+```{r, echo=FALSE, message=FALSE}
+#par(mfrow = c(1,2),mar=c(5, 3, 1, 1)) 
+library("RColorBrewer")
+colors1 <- brewer.pal(n = 11, name = "Set3")
+colors2 <- brewer.pal(n = 9, name = "Set2")
+colors<-c(colors1, colors2)
+
+barplot(genome_hits$pval, main = "Pvalue for the 19 genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_hits$Gene_name)
+
+barplot(genome_hits$N, main = "Number of sites for the 19 genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_hits$Gene_name)
+
+
+```
+
+```{r, echo=FALSE, message=FALSE}
+par(mfrow = c(1,2),mar=c(4.5, 4, 1, 1)) 
+barplot(genome_neg_hits$pval, main = "Number of sites for negative genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_neg_hits$Gene_name)
+
+barplot(genome_neg_hits$N, main = "Number of sites for negative genome hits",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=genome_neg_hits$Gene_name)
+
+
+```
+
+```{r, echo=FALSE, message=FALSE}
+par(mfrow = c(1,2),mar=c(6, 4, 1, 1)) 
+barplot(t_utr_hits$pval, main = "Number of sites for 3' sequences",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=t_utr_hits$Gene_name)
+
+barplot(t_utr_hits$N, main = "Number of sites for 3' sequences",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="number of sites", xlab="Gene_name", names.arg=t_utr_hits$Gene_name)
+
+```
+
+# Results 
+
+```{r}
+# Import requirements
+
+library(data.table)
+source("human-RBP-analysis/rbp_functions.R")
+
+################################################
+
+# Compare hits in whole genome
+
+load("output50/genome_hits.RData")
+sars2 = genome_hits
+
+load("output50/MN996532.2/genome_hits.RData")
+bat = genome_hits
+
+load("output50/NC_004718.3/genome_hits.RData")
+sars = genome_hits
+
+diff_hits_sars2_bat=setdiff(sars2[, Gene_name], bat[, Gene_name]) 
+paper_hits_sars2_bat="character(0)"
+diff_hits_sars2_sars=setdiff(sars2[, Gene_name], sars[, Gene_name]) #
+paper_hits_sars2_sars=c("PABPC1", "ZNF638" ,"PABPC5", "CELF2",  "PABPC3", "YBX1")
+################################################
+
+# Compare hits in 3'UTR
+load("output50/t_utr_hits.RData")
+sars2 = t_utr_hits
+
+load("output50/MN996532.2/t_utr_hits.RData")
+bat = t_utr_hits
+
+load("output50/NC_004718.3/t_utr_hits.RData")
+sars = t_utr_hits
+
+diff_3_sars2_bat=setdiff(sars2[, Gene_name], bat[, Gene_name]) 
+paper_3_sars2_bat="character(0)"
+diff_3_sars2_sars=setdiff(sars2[, Gene_name], sars[, Gene_name]) 
+paper_3_sars2_sars="character(0)"
+
+###############################################
+# Compare hits in 5'UTR
+
+load("output50/f_utr_hits.RData")
+sars2 = f_utr_hits
+
+load("output50/MN996532.2/f_utr_hits.RData")
+bat = f_utr_hits
+
+load("output50/NC_004718.3/f_utr_hits.RData")
+sars = f_utr_hits
+
+diff_5_sars2_bat=setdiff(sars2[, Gene_name], bat[, Gene_name]) #character(0)
+paper_5_sars2_bat="character(0)"
+diff_5_sars2_sars=setdiff(sars2[, Gene_name], sars[, Gene_name]) 
+paper_5_sars2_sars="character(0)"
+
+###############################################
+
+# Compare hits in - strand
+load("output50/genome_neg_hits.RData")
+sars2 = genome_neg_hits
+
+load("output50/MN996532.2/genome_neg_hits.RData")
+bat = genome_neg_hits
+
+load("output50/NC_004718.3/genome_neg_hits.RData")
+sars = genome_neg_hits
+
+diff_neg_sars2_bat=setdiff(sars2[, Gene_name], bat[, Gene_name])
+paper_neg_sars2_bat=c("ELAVL1",  "HNRNPDL" ,"RBFOX1")
+diff_neg_sars2_sars=setdiff(sars2[, Gene_name], sars[, Gene_name]) 
+paper_neg_sars2_sars=c("SRSF3" , "TIA1"  , "ELAVL1" ,"FUS" )  
+
+#############################################
+a=data.frame(diff_neg=paste(diff_neg_sars2_sars,collapse = " "),paper_neg=paste(paper_neg_sars2_sars,collapse = " "))
+knitr::kable(a, caption = "Conclusion, TARGETS") 
+```
+
+
+
