@@ -1,0 +1,221 @@
+---
+title: "DE project"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE, results="hide"}
+library(edgeR) 
+library(DESeq2)
+library(kableExtra)
+library(tidyverse)
+library("RColorBrewer")
+library("ggdendro")
+library(PLNmodels)
+library(readxl)
+```
+
+# Data
+ 
+```{r, echo=FALSE, message=FALSE}
+data <- read_excel("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/reference/data_expression.xlsx")
+names=data[1]
+genes=data[2]
+data=data[,-c(1:2,27:34)] 
+rownames(data)=paste(names[[1]],genes[[1]],sep="  ,  ")
+
+knitr::kable(head(data[,1:10]), caption="Beginning counts table") %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position",font_size = 4 ) %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+
+```
+We created a file targets to do a differential analysis. 
+```{r, echo=FALSE, message=FALSE}
+targets <- read.table("D:/Columbia/Genomique/Final Project/ecbm-e4060-covid-interactions/hackathon_published/reference/TARGET.txt", header = TRUE, sep = "\t")
+targets$condition <- as.factor(paste(targets$type,targets$Time , sep = ""))
+group <-targets$condition
+
+knitr::kable(head(targets), caption = "Beginning of table TARGETS") %>% kable_styling(bootstrap_options = c("striped", "hover"), latex_options = "hold_position") %>% 
+  column_spec(1, bold = T, color = "white", background = "#66C2A5") %>% 
+  row_spec(0, bold = T, color = "white", background = "#66C2A5")
+```
+
+```{r, echo=FALSE, message=FALSE}
+# make sure the two table have the same IDs
+if (!all(targets$X %in% colnames(data))) {
+  stop("Error!!")
+}
+```
+
+# Data anaysis 
+
+We can start by observing the raw data from the paper. It gives you a first idea of the quality of the samples.
+```{r, echo=FALSE, message=FALSE}
+colors1 <- brewer.pal(n = 12, name = "Set3")
+colors2 <- brewer.pal(n = 12, name = "Set2")
+colors<-c(colors1, colors1)
+zero <- apply(data, 2, FUN = function(x) sum(x == 0))*100/nrow(data)
+barplot(zero, main = "Percentage of zeros for each sample (Graph1)",las=2,horiz=F, col = colors, cex.main = 1, cex.names = 0.7, ylab="Pourcentage", xlab="Echantillons")
+```
+**Observations** The results for the control groups and virus groups are very different. Indeed, more proteins are absent after 6h hours in the control groups and after 24h for the virus groups. 
+
+
+```{r, echo=FALSE, message=FALSE}
+# Total number of sequences per sample (library size)
+barplot(colSums(data), main="Total number of sequences per sample (Graph2)",col=colors, cex.main=1,las=2,horiz=F)
+abline(h=mean(colSums(data)),col="deeppink2")
+```
+*The pink line corresponds to the average library size.*
+
+
+**Observations** We cannot see a difference for the different samples. The number of reads per sample appears homogeneous.
+
+
+
+
+We can draw a dendrogram 
+```{r, fig.align="center", echo=FALSE}
+dd<-dist(t(data),method="euclidean")
+hc <- hclust(dd, method = "ward.D2")
+ggdendrogram(hc,rotate=TRUE) +labs(title="Dendrogram (Graphe3)")
+```
+
+
+
+```{r, echo=FALSE, message=FALSE}
+#Edger
+dgelist <- DGEList(data, group=targets$condition, remove.zeros = T,samples=targets, genes=rownames(data))
+```
+
+```{r, echo=FALSE, message=FALSE}
+plnpca<-function(a,b){
+transpose<-t(a)
+gn.selected <- colSums(transpose) > 60000
+transpose<-transpose[,gn.selected] 
+transpose<-apply(transpose,2, as.integer)
+rownames(transpose)<-1:24
+prepare<-prepare_data(transpose, as.character(targets$Time))
+mypca <- PLNPCA(Abundance ~ 1 + offset(log(Offset)), data = prepare, ranks = 1:5)
+mypca <- getBestModel(mypca)
+plot(mypca, map = "individual", nb_axes=2, ind_cols = targets$type, main=b) 
+}
+plnpca(dgelist$counts,"ACP sur données brutes")
+```
+
+A MDS (multidimentional scaling) also enables the visualization of the groups. 
+
+```{r, echo=FALSE, message=FALSE}
+col<-c(rep("deeppink2",each=12),rep("cyan3",each=12))
+plotMDS(dgelist, main="MDS plot",col=col)
+```
+
+**Observations**
+On the APC we can observe that the behavior of the control 6h is weird. 
+
+# DE analysis
+
+```{r, echo=FALSE, message=FALSE, results='hide'}
+#Design matrix
+design <- model.matrix(~ 0 + group, data=targets)
+colnames(design) <-levels(group)
+
+#Filtering
+keep <- filterByExpr(dgelist, design=design)
+dgelist <- dgelist[keep,,keep.lib.sizes=FALSE]
+
+#Normalization
+dgelist <- calcNormFactors(dgelist, method="TMM")
+```
+
+
+
+```{r, echo=FALSE, message=FALSE}
+#Dispersion
+dgelist <- estimateDisp(dgelist, design, robust = TRUE)
+cat("Commun dispersion",dgelist$common.dispersion)
+plotBCV(dgelist)
+```
+
+
+
+```{r, echo=FALSE, message=FALSE}
+fit <- glmQLFit(dgelist, design,robust = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE}
+qlf<- glmQLFTest(fit,contrast = makeContrasts((controle24-virus24), levels = design))
+hist(qlf$table$PValue, main = "Histogram of the raw PValues for 24h (Graphe *)", ylab = "raw PValues")
+```
+```{r, echo=FALSE, message=FALSE}
+DE<-decideTestsDGE(qlf,adjust.method="BH",p.value=0.05)
+prot_edger<-row.names(qlf)[which(DE!=0)]
+```
+
+
+
+```{r, echo=FALSE, message=FALSE}
+toptags <- as.data.frame(topTags(qlf, n=Inf))
+```
+**Observations**
+We can see that the number of DE gene increase when the time is increasing which seems normal. 
+Indeed, 1263 DE after 24h and only 21 after 2h, 160 after 6h and 13 after 10h. 
+
+ 
+# Comparaison with the proteins found in the paper and by the simulations 
+
+```{r}
+#After 24h 
+geno_hits=c("HNRNPL","FUS","MBNL1","SRSF1","RBMY1A1","ZFP36","SRSF10","PTBP1","YBX2","SRSF3","PABPC1","PABPN1","SART3","PABPC4","ZNF638","PABPC5","PABPC3","CELF2","YBX1")
+geno_5="ZRANB2"
+geno_3=c("PABPC4","SART3","PABPC1","SRSF10","KHDRBS3","LIN28A","PPIE","HNRNPA1")
+geno_neg=c("NOVA2","YBX1","NOVA1","HNRNPL","YBX2","CELF2","SRSF3","CELF6","ELAVL1","TIA1","CELF4","FUS","ZFP36","HNRNPDL","RBFOX1")
+
+inter_geno_hits<-intersection(prot_edger,geno_hits)
+inter_geno_hits<-prot_edger[is.element(prot_edger,geno_hits)]
+
+```
+
+```{r}
+direction<-function(res){
+    keep1<-res==-1
+    keep2<-res==1
+    if (length(res[keep1,])!=1){
+      negatif=res[keep1,]}
+    else{negatif<-"bo"}
+    
+    if (length(res[keep2,])!=1){
+      positif=res[keep2,]}
+    else{positif <-"bo"}
+  return(list(negatif=negatif,positif=positif))
+}
+proteins=direction(DE)
+```
+
+```{r}
+L_neg="The proteins more expressed in the virus samples than control samples"
+for (i in 1:length(geno_hits)){ 
+  L=proteins[[1]][grep(geno_hits[i],rownames(proteins[[1]])),]
+  L_neg=c(L_neg,rownames(L))}
+    
+L_pos="The proteins more expressed in the control samples than virus samples"
+for (i in 1:length(geno_hits)){ 
+  L=proteins[[2]][grep(geno_hits[i],rownames(proteins[[2]])),]
+  L_pos=c(L_pos,rownames(L))}
+```
+
+```{r}
+knitr::kable(L_pos, caption="DE genes from the paper",digits = 0) %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position")
+
+
+knitr::kable(L_neg, caption="DE genes from the paper",digits = 0) %>% kable_styling(bootstrap_options = c("striped", "hover"),latex_options = "hold_position")
+
+```
+
+
+
+# Conclusion 
