@@ -7,3 +7,6 @@ Herein, we first replicate their workflow before implementing newly discovered C
 ### 1. Hackathon Code is found [here](hackathon_published).
 Specifically, code for comparing our results to hackathon results is found [here](hackathon_published/hackathon_output_analysis.ipynb) and [here](hackathon_published/Hackathon_Analysis.Rmd). 
 
+### 2. Differential expression analysis conducted by us is found [here](differential_expression). 
+
+### 3. Running protein based transformer model to classify RBPs and COVID-19 binding or not is found [here](RBP_classifier_model). 
